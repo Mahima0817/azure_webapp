@@ -1,4 +1,4 @@
-name: Build and deploy Node.js app to Azure Web App - azurewebapp
+name: Build and Deploy to Azure WebApp
 
 on:
   push:
@@ -12,28 +12,21 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18.x'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build the app
-        run: npm run build --if-present
 
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: 'ID_TOKEN'
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: azurewebapp   # replace with your real Azure Web App name
-          package: .
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: 'production'
