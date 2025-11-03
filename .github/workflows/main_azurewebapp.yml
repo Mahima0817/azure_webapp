@@ -1,74 +1,39 @@
-name: Build and deploy Node.js app to Azure Web App - ainavigation
+name: Build and deploy Node.js app to Azure Web App - azurewebapp
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-permissions:
-  id-token: write
-  contents: read
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '18.x'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build project
+      - name: Build the app
         run: npm run build --if-present
 
-      - name: Zip artifact for deployment
-        run: zip -r release.zip .
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          name: node-app
-          path: release.zip
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build-and-deploy
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-
-      - name: Unzip artifact
-        run: unzip release.zip
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: >-
-            {
-              "clientId": "${{ secrets.AZUREAPPSERVICE_CLIENTID }}",
-              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
-              "subscriptionId": "${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}",
-              "tenantId": "${{ secrets.AZUREAPPSERVICE_TENANTID }}"
-            }
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
+          auth-type: SERVICE_PRINCIPAL
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: ainavigation
+          app-name: azurewebapp   # ✅ Replace this with your exact App Service name
           package: .
-
