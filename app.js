@@ -9,7 +9,9 @@ if (!window.map) {
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
-  window.map = map; // store globally to avoid redefinition
+  window.map = map;
+} else {
+  map = window.map;
 }
 
 // ===========================
@@ -252,4 +254,3 @@ async function getRouteExplanation(prompt) {
     return "Error fetching AI explanation.";
   }
 }
-
