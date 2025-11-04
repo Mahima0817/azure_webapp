@@ -26,6 +26,11 @@ if (!apiKey || !endpoint || !deploymentId || !apiVersion) {
   process.exit(1);
 }
 
+// ✅ Root route (for Azure check)
+app.get("/", (req, res) => {
+  res.send("🚀 Campus Navigation Backend is running successfully on Azure!");
+});
+
 // ✅ Route: Generate AI directions
 app.post("/api/genai", async (req, res) => {
   const prompt = req.body.prompt;
@@ -74,3 +79,4 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`🚀 Backend running on port ${port}`);
 });
+
