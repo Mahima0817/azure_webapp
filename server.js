@@ -2,11 +2,15 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require("axios");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+// ✅ Serve static frontend files (index.html, app.js, graph.js, etc.)
+app.use(express.static(path.join(__dirname)));
 
 // ✅ Load environment variables
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
@@ -59,18 +63,27 @@ app.post("/api/genai", async (req, res) => {
       }
     );
 
-    const result = response.data.choices?.[0]?.message?.content || "No response from AI.";
+    const result =
+      response.data.choices?.[0]?.message?.content || "No response from AI.";
     console.log("✅ AI response received.");
     res.json({ result });
   } catch (error) {
-    const msg = error.response?.data?.error?.message || error.message || String(error);
+    const msg =
+      error.response?.data?.error?.message || error.message || String(error);
     console.error("❌ Azure OpenAI error:", msg);
     res.status(500).json({ error: "Failed to get AI response", details: msg });
   }
 });
 
+// ✅ Route for serving index.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 // ✅ Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`🚀 Backend running on port ${port}`);
+  console.log(`🚀 Backend + Frontend running on port ${port}`);
 });
+
+
