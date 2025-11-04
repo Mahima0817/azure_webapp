@@ -40,7 +40,7 @@
   // ===========================
   // 📥 LOAD CAMPUS DATA
   // ===========================
-  fetch("campus_nodes_edges.json")
+  fetch("/campus_nodes_edges.json")
     .then((response) => {
       if (!response.ok) throw new Error("Campus data not found (404)");
       return response.json();
