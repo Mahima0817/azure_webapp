@@ -1,16 +1,33 @@
-// ✅ Smart Campus Navigator - app.js
+// Smart Campus Navigator - app.js
 
-// Detect correct base URL dynamically (works both local + Azure)
-const baseURL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:3000"
-    : window.location.origin;
+// Initialize the map
+const map = L.map("map").setView([13.0827, 80.2707], 16);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: '&copy; OpenStreetMap contributors',
+}).addTo(map);
+
+// Graph data structure
+const graph = {
+  nodes: new Map(),
+  adjacencyList: new Map(),
+  addNode(node) {
+    this.nodes.set(node.id, node);
+    this.adjacencyList.set(node.id, []);
+  },
+  addEdge(edge) {
+    this.adjacencyList.get(edge.from).push({
+      to: edge.to,
+      weight: edge.weight,
+      accessible: edge.accessible,
+    });
+  },
+};
 
 // ✅ Load campus data safely
-fetch(`${baseURL}/campus_nodes_edges.json`)
+fetch("campus_nodes_edges.json")
   .then((response) => {
     if (!response.ok) {
-      throw new Error(`Campus data not found (${response.status})`);
+      throw new Error("Campus data not found (404)");
     }
     return response.json();
   })
@@ -28,7 +45,7 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
       }
     });
 
-    // Average lat/lng for each location
+    // Calculate average lat/lng for each location
     const locationMarkers = [];
     for (const name in nodesByName) {
       const nodes = nodesByName[name];
@@ -38,17 +55,17 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
     }
 
     // Add map markers
-    locationMarkers.forEach((loc) => {
-      L.marker([loc.lat, loc.lng]).bindPopup(loc.name).addTo(map);
+    locationMarkers.forEach((location) => {
+      L.marker([location.lat, location.lng]).bindPopup(location.name).addTo(map);
     });
 
     // Populate dropdowns
     const startSelect = document.getElementById("start");
     const endSelect = document.getElementById("end");
-    locationMarkers.forEach((loc) => {
+    locationMarkers.forEach((location) => {
       const option = document.createElement("option");
-      option.value = loc.name;
-      option.text = loc.name;
+      option.value = location.name;
+      option.text = location.name;
       startSelect.add(option.cloneNode(true));
       endSelect.add(option);
     });
@@ -87,7 +104,7 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
       let shortestPath = null;
       let shortestDistance = Infinity;
 
-      // Run algorithm
+      // Run the chosen algorithm
       for (const startId of startNodeIds) {
         for (const endId of endNodeIds) {
           let path = [];
@@ -116,6 +133,7 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
       if (shortestPath) {
         drawPath(shortestPath);
 
+        // Convert node IDs to readable location names
         const locationPath = shortestPath
           .map((id) => {
             const node = graph.nodes.get(id);
@@ -125,10 +143,12 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
           })
           .filter((name) => name !== null);
 
+        // Avoid repeated consecutive locations
         const filteredLocations = locationPath.filter(
           (loc, i) => i === 0 || loc !== locationPath[i - 1]
         );
 
+        // Build step-by-step directions
         const readableDirections = [];
         for (let i = 0; i < filteredLocations.length - 1; i++) {
           readableDirections.push(
@@ -136,16 +156,19 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
           );
         }
 
+        // AI explanation prompt
         const explanationPrompt = `
-          Generate natural, student-friendly campus walking directions.
+          Generate natural, human-like campus walking directions.
           The route includes: ${filteredLocations.join(" → ")}.
-          Write clear step-by-step navigation suitable for walking.
-          Avoid "Node" or "Unnamed" labels.
-          Total distance: ${shortestDistance.toFixed(2)} meters.
+          Write clear, short step-by-step instructions suitable for a student walking across campus.
+          Avoid any mention of "Node" or "Unnamed" points.
+          Total walking distance: ${shortestDistance.toFixed(2)} meters.
         `;
 
+        // Get AI explanation
         const explanation = await getRouteExplanation(explanationPrompt);
 
+        // Display directions
         const explanationBox = document.getElementById("routeExplanation");
         explanationBox.innerHTML = `
           <div style="font-family: Poppins, Arial; padding: 12px; background: #f7faff; border-radius: 10px; border-left: 5px solid #0066cc;">
@@ -166,11 +189,9 @@ fetch(`${baseURL}/campus_nodes_edges.json`)
       }
     });
   })
-  .catch((error) =>
-    console.error("❌ Error loading campus data (check JSON file path):", error)
-  );
+  .catch((error) => console.error("Error loading campus data (check JSON file path):", error));
 
-// ✅ Calculate path distance
+// Calculate path distance
 function calculatePathDistance(path) {
   let totalDistance = 0;
   for (let i = 0; i < path.length - 1; i++) {
@@ -183,7 +204,7 @@ function calculatePathDistance(path) {
   return totalDistance;
 }
 
-// ✅ Draw path on map
+// Draw red path on map
 let currentPathLayer;
 function drawPath(nodeIds) {
   if (currentPathLayer) map.removeLayer(currentPathLayer);
@@ -195,10 +216,10 @@ function drawPath(nodeIds) {
   map.fitBounds(currentPathLayer.getBounds());
 }
 
-// ✅ AI route explanation
+// Fetch AI route explanation
 async function getRouteExplanation(prompt) {
   try {
-    const response = await fetch(`${baseURL}/api/genai`, {
+    const response = await fetch("/api/genai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
@@ -210,3 +231,4 @@ async function getRouteExplanation(prompt) {
     return "Error fetching AI explanation.";
   }
 }
+
