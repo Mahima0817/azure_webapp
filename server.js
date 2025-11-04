@@ -14,7 +14,7 @@ const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "") + "/";
 const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
 const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
-// ✅ Quick check for missing environment variables
+// ✅ Check for missing variables
 if (!apiKey || !endpoint || !deploymentId || !apiVersion) {
   console.error("❌ Missing one or more required environment variables.");
   console.log({
@@ -25,11 +25,6 @@ if (!apiKey || !endpoint || !deploymentId || !apiVersion) {
   });
   process.exit(1);
 }
-
-// ✅ Root route (for Azure check)
-app.get("/", (req, res) => {
-  res.send("🚀 Campus Navigation Backend is running successfully on Azure!");
-});
 
 // ✅ Route: Generate AI directions
 app.post("/api/genai", async (req, res) => {
@@ -74,9 +69,10 @@ app.post("/api/genai", async (req, res) => {
   }
 });
 
-// ✅ Start server
+// ✅ Start server on correct Azure port
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${port}`);
 });
+
 
