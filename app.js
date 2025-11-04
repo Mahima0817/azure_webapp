@@ -2,19 +2,17 @@
 // 🌍 SMART CAMPUS NAVIGATOR
 // ===========================
 
-// Wrap everything in an IIFE to avoid global scope pollution
 (function() {
-  // Only declare let map ONCE, and reuse window.map if available
-  let map;
-  if (!window.campusMap) {
-    map = L.map("map").setView([13.0827, 80.2707], 16);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
-    window.campusMap = map; // attach once!
-  } else {
-    map = window.campusMap;
+  // FIX: Ensure Leaflet map container is reset if already initialized
+  if (L.DomUtil.get('map') != null) {
+    L.DomUtil.get('map')._leaflet_id = null;
   }
+
+  // Now safely initialize your map WITHOUT redeclaring it elsewhere
+  let map = L.map("map").setView([13.0827, 80.2707], 16);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
 
   // ===========================
   // 🧠 GRAPH DATA STRUCTURE
@@ -257,9 +255,6 @@
     }
   }
 
-  // If you have bfs, dfs, dijkstra functions, import or define them below
-  // function bfs(...) { ... }
-  // function dfs(...) { ... }
-  // function dijkstra(...) { ... }
+  // Your bfs, dfs, and dijkstra functions should be defined here as well
 
 })();
