@@ -8,6 +8,9 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// ✅ Serve all local files (HTML, JSON, JS, CSS)
+app.use(express.static(__dirname));
+
 // ✅ Load environment variables
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "") + "/";
@@ -67,6 +70,11 @@ app.post("/api/genai", async (req, res) => {
     console.error("❌ Azure OpenAI error:", msg);
     res.status(500).json({ error: "Failed to get AI response", details: msg });
   }
+});
+
+// ✅ Default route to open your main page
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/index.html");
 });
 
 // ✅ Start server on correct Azure port
