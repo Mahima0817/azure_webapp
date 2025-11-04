@@ -8,16 +8,13 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Serve all local files (HTML, JSON, JS, CSS)
-app.use(express.static(__dirname));
-
 // ✅ Load environment variables
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "") + "/";
 const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
 const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
-// ✅ Check for missing variables
+// ✅ Quick check for missing environment variables
 if (!apiKey || !endpoint || !deploymentId || !apiVersion) {
   console.error("❌ Missing one or more required environment variables.");
   console.log({
@@ -72,15 +69,8 @@ app.post("/api/genai", async (req, res) => {
   }
 });
 
-// ✅ Default route to open your main page
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
-});
-
-// ✅ Start server on correct Azure port
+// ✅ Start server
 const port = process.env.PORT || 3000;
-app.listen(port, "0.0.0.0", () => {
+app.listen(port, () => {
   console.log(`🚀 Backend running on port ${port}`);
 });
-
-
