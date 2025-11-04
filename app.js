@@ -1,37 +1,50 @@
-// Smart Campus Navigator - app.js
+// ===========================
+// 🌍 SMART CAMPUS NAVIGATOR
+// ===========================
 
-// Initialize the map
-const map = L.map("map").setView([13.0827, 80.2707], 16);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: '&copy; OpenStreetMap contributors',
-}).addTo(map);
+// ✅ Initialize map safely (avoid redeclaration)
+let map;
+if (!window.map) {
+  map = L.map("map").setView([13.0827, 80.2707], 16);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+  window.map = map; // store globally to avoid redefinition
+}
 
-// Graph data structure
+// ===========================
+// 🧠 GRAPH DATA STRUCTURE
+// ===========================
 const graph = {
   nodes: new Map(),
   adjacencyList: new Map(),
   addNode(node) {
-    this.nodes.set(node.id, node);
-    this.adjacencyList.set(node.id, []);
+    if (!this.nodes.has(node.id)) {
+      this.nodes.set(node.id, node);
+      this.adjacencyList.set(node.id, []);
+    }
   },
   addEdge(edge) {
-    this.adjacencyList.get(edge.from).push({
-      to: edge.to,
-      weight: edge.weight,
-      accessible: edge.accessible,
-    });
+    if (this.adjacencyList.has(edge.from)) {
+      this.adjacencyList.get(edge.from).push({
+        to: edge.to,
+        weight: edge.weight,
+        accessible: edge.accessible,
+      });
+    }
   },
 };
 
-// ✅ Load campus data safely
+// ===========================
+// 📥 LOAD CAMPUS DATA
+// ===========================
 fetch("campus_nodes_edges.json")
   .then((response) => {
-    if (!response.ok) {
-      throw new Error("Campus data not found (404)");
-    }
+    if (!response.ok) throw new Error("Campus data not found (404)");
     return response.json();
   })
   .then((data) => {
+    // Add nodes & edges to graph
     data.nodes.forEach((node) => graph.addNode(node));
     data.edges.forEach((edge) => graph.addEdge(edge));
 
@@ -46,45 +59,53 @@ fetch("campus_nodes_edges.json")
     });
 
     // Calculate average lat/lng for each location
-    const locationMarkers = [];
-    for (const name in nodesByName) {
-      const nodes = nodesByName[name];
-      const avgLat = nodes.reduce((sum, node) => sum + node.lat, 0) / nodes.length;
-      const avgLng = nodes.reduce((sum, node) => sum + node.lng, 0) / nodes.length;
-      locationMarkers.push({ name, lat: avgLat, lng: avgLng });
-    }
+    const locationMarkers = Object.entries(nodesByName).map(([name, nodes]) => {
+      const avgLat = nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length;
+      const avgLng = nodes.reduce((sum, n) => sum + n.lng, 0) / nodes.length;
+      return { name, lat: avgLat, lng: avgLng };
+    });
 
     // Add map markers
-    locationMarkers.forEach((location) => {
-      L.marker([location.lat, location.lng]).bindPopup(location.name).addTo(map);
+    locationMarkers.forEach((loc) => {
+      L.marker([loc.lat, loc.lng]).bindPopup(loc.name).addTo(map);
     });
 
     // Populate dropdowns
     const startSelect = document.getElementById("start");
     const endSelect = document.getElementById("end");
-    locationMarkers.forEach((location) => {
-      const option = document.createElement("option");
-      option.value = location.name;
-      option.text = location.name;
-      startSelect.add(option.cloneNode(true));
-      endSelect.add(option);
+    locationMarkers.forEach((loc) => {
+      const opt1 = document.createElement("option");
+      opt1.value = loc.name;
+      opt1.text = loc.name;
+      startSelect.add(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = loc.name;
+      opt2.text = loc.name;
+      endSelect.add(opt2);
     });
 
-    // Draw static map edges
+    // Draw gray static edges
     data.edges.forEach((edge) => {
       const fromNode = graph.nodes.get(edge.from);
       const toNode = graph.nodes.get(edge.to);
-      const latlngs = [
-        [fromNode.lat, fromNode.lng],
-        [toNode.lat, toNode.lng],
-      ];
-      L.polyline(latlngs, { color: "gray" }).addTo(map);
+      if (fromNode && toNode) {
+        L.polyline(
+          [
+            [fromNode.lat, fromNode.lng],
+            [toNode.lat, toNode.lng],
+          ],
+          { color: "gray", weight: 1 }
+        ).addTo(map);
+      }
     });
 
-    // Handle route finding
+    // ===========================
+    // 🚀 FIND ROUTE HANDLER
+    // ===========================
     document.getElementById("findRoute").addEventListener("click", async () => {
-      const startName = document.getElementById("start").value;
-      const endName = document.getElementById("end").value;
+      const startName = startSelect.value;
+      const endName = endSelect.value;
       const algorithm = document.getElementById("algorithm").value;
       const accessibility = document.getElementById("accessibility").checked;
 
@@ -92,142 +113,142 @@ fetch("campus_nodes_edges.json")
         alert("Please select both start and end locations.");
         return;
       }
-
       if (startName === endName) {
         alert("Start and end locations cannot be the same.");
         return;
       }
 
-      const startNodeIds = nodesByName[startName].map((node) => node.id);
-      const endNodeIds = nodesByName[endName].map((node) => node.id);
+      const startNodeIds = nodesByName[startName].map((n) => n.id);
+      const endNodeIds = nodesByName[endName].map((n) => n.id);
 
       let shortestPath = null;
       let shortestDistance = Infinity;
 
-      // Run the chosen algorithm
-      for (const startId of startNodeIds) {
-        for (const endId of endNodeIds) {
+      for (const sId of startNodeIds) {
+        for (const eId of endNodeIds) {
           let path = [];
           switch (algorithm.toLowerCase()) {
             case "bfs":
-              path = bfs(graph, startId, endId);
+              path = bfs(graph, sId, eId);
               break;
             case "dfs":
-              path = dfs(graph, startId, endId);
+              path = dfs(graph, sId, eId);
               break;
             case "dijkstra":
-              path = dijkstra(graph, startId, endId, "distance", accessibility);
+              path = dijkstra(graph, sId, eId, "distance", accessibility);
               break;
+            default:
+              alert("Please select an algorithm.");
+              return;
           }
 
-          if (path.length > 0) {
-            const totalDistance = calculatePathDistance(path);
-            if (totalDistance < shortestDistance) {
-              shortestDistance = totalDistance;
+          if (path && path.length > 0) {
+            const totalDist = calculatePathDistance(path);
+            if (totalDist < shortestDistance) {
+              shortestDistance = totalDist;
               shortestPath = path;
             }
           }
         }
       }
 
-      if (shortestPath) {
-        drawPath(shortestPath);
-
-        // Convert node IDs to readable location names
-        const locationPath = shortestPath
-          .map((id) => {
-            const node = graph.nodes.get(id);
-            return node.name && !node.name.toLowerCase().includes("node")
-              ? node.name
-              : null;
-          })
-          .filter((name) => name !== null);
-
-        // Avoid repeated consecutive locations
-        const filteredLocations = locationPath.filter(
-          (loc, i) => i === 0 || loc !== locationPath[i - 1]
-        );
-
-        // Build step-by-step directions
-        const readableDirections = [];
-        for (let i = 0; i < filteredLocations.length - 1; i++) {
-          readableDirections.push(
-            `Walk from <strong>${filteredLocations[i]}</strong> to <strong>${filteredLocations[i + 1]}</strong>.`
-          );
-        }
-
-        // AI explanation prompt
-        const explanationPrompt = `
-          Generate natural, human-like campus walking directions.
-          The route includes: ${filteredLocations.join(" → ")}.
-          Write clear, short step-by-step instructions suitable for a student walking across campus.
-          Avoid any mention of "Node" or "Unnamed" points.
-          Total walking distance: ${shortestDistance.toFixed(2)} meters.
-        `;
-
-        // Get AI explanation
-        const explanation = await getRouteExplanation(explanationPrompt);
-
-        // Display directions
-        const explanationBox = document.getElementById("routeExplanation");
-        explanationBox.innerHTML = `
-          <div style="font-family: Poppins, Arial; padding: 12px; background: #f7faff; border-radius: 10px; border-left: 5px solid #0066cc;">
-            <h3 style="color: #004d99;">🚶 Step-by-Step Directions</h3>
-            <ol style="margin-left: 20px; line-height: 1.6; color: #333;">
-              ${readableDirections.map((step) => `<li>${step}</li>`).join("")}
-            </ol>
-            <p style="margin-top: 12px; background: #ffffff; padding: 10px; border-left: 4px solid #4da6ff;">
-              <strong>AI Guidance:</strong> ${explanation}
-            </p>
-            <p style="margin-top: 8px; color: #004d99; font-weight: 600;">
-              📏 Total Distance: ${shortestDistance.toFixed(2)} meters
-            </p>
-          </div>
-        `;
-      } else {
+      if (!shortestPath) {
         alert("No path found between the selected locations.");
+        return;
       }
+
+      drawPath(shortestPath);
+
+      // Convert node IDs → readable names
+      const locationPath = shortestPath
+        .map((id) => {
+          const node = graph.nodes.get(id);
+          return node && node.name && !node.name.toLowerCase().includes("node")
+            ? node.name
+            : null;
+        })
+        .filter((n) => n);
+
+      const filtered = locationPath.filter(
+        (loc, i) => i === 0 || loc !== locationPath[i - 1]
+      );
+
+      const readableSteps = filtered
+        .map(
+          (loc, i) =>
+            i < filtered.length - 1 &&
+            `Walk from <strong>${loc}</strong> to <strong>${filtered[i + 1]}</strong>.`
+        )
+        .filter(Boolean);
+
+      const prompt = `
+        Generate short, clear, human-like walking directions for the following route:
+        ${filtered.join(" → ")}.
+        Avoid "node" or "unnamed" terms.
+        Total walking distance: ${shortestDistance.toFixed(2)} meters.
+      `;
+
+      const aiExplanation = await getRouteExplanation(prompt);
+
+      const box = document.getElementById("routeExplanation");
+      box.innerHTML = `
+        <div style="font-family:Poppins,Arial;padding:12px;background:#f7faff;border-radius:10px;border-left:5px solid #0066cc;">
+          <h3 style="color:#004d99;">🚶 Step-by-Step Directions</h3>
+          <ol style="margin-left:20px;line-height:1.6;color:#333;">
+            ${readableSteps.map((s) => `<li>${s}</li>`).join("")}
+          </ol>
+          <p style="margin-top:12px;background:#fff;padding:10px;border-left:4px solid #4da6ff;">
+            <strong>AI Guidance:</strong> ${aiExplanation}
+          </p>
+          <p style="margin-top:8px;color:#004d99;font-weight:600;">
+            📏 Total Distance: ${shortestDistance.toFixed(2)} meters
+          </p>
+        </div>`;
     });
   })
-  .catch((error) => console.error("Error loading campus data (check JSON file path):", error));
+  .catch((err) => console.error("❌ Error loading campus data:", err));
 
-// Calculate path distance
+// ===========================
+// 📏 CALCULATE PATH DISTANCE
+// ===========================
 function calculatePathDistance(path) {
-  let totalDistance = 0;
+  let total = 0;
   for (let i = 0; i < path.length - 1; i++) {
-    const fromNodeId = path[i];
-    const toNodeId = path[i + 1];
-    const edges = graph.adjacencyList.get(fromNodeId);
-    const edge = edges.find((e) => e.to === toNodeId);
-    if (edge) totalDistance += edge.weight;
+    const edges = graph.adjacencyList.get(path[i]) || [];
+    const edge = edges.find((e) => e.to === path[i + 1]);
+    if (edge) total += edge.weight;
   }
-  return totalDistance;
+  return total;
 }
 
-// Draw red path on map
-let currentPathLayer;
+// ===========================
+// 🗺️ DRAW PATH
+// ===========================
+let currentPathLayer = null;
 function drawPath(nodeIds) {
   if (currentPathLayer) map.removeLayer(currentPathLayer);
-  const latlngs = nodeIds.map((nodeId) => {
-    const node = graph.nodes.get(nodeId);
+  const latlngs = nodeIds.map((id) => {
+    const node = graph.nodes.get(id);
     return [node.lat, node.lng];
   });
   currentPathLayer = L.polyline(latlngs, { color: "red", weight: 4 }).addTo(map);
   map.fitBounds(currentPathLayer.getBounds());
 }
 
-// Fetch AI route explanation
+// ===========================
+// 🤖 AI ROUTE EXPLANATION
+// ===========================
 async function getRouteExplanation(prompt) {
   try {
-    const response = await fetch("/api/genai", {
+    const res = await fetch("/api/genai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
     });
-    const data = await response.json();
+    const data = await res.json();
     return data.result || "No AI explanation available.";
-  } catch (err) {
-    console.error("AI route explanation error:", err);
+  } catch (e) {
+    console.error("AI explanation error:", e);
     return "Error fetching AI explanation.";
   }
 }
