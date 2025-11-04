@@ -191,7 +191,7 @@ function drawPath(nodeIds) {
 // Fetch AI route explanation
 async function getRouteExplanation(prompt) {
   try {
-    const response = await fetch("http://localhost:3000/api/genai", {
+    const response = await fetch("/api/genai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
