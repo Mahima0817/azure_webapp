@@ -1,21 +1,24 @@
-// server.js
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const axios = require("axios");
-require("dotenv").config();
+// ✅ server.js (ESM compatible for Azure App Service)
+
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
 // ✅ Load environment variables
-const apiKey = process.env.AZURE_OPENAI_KEY; // renamed to match Azure env var
+const apiKey = process.env.AZURE_OPENAI_KEY;
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "");
-const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT; // renamed for clarity
+const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT;
 const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-05-01-preview";
 
-// ✅ Check for missing variables
+// ✅ Check required variables
 if (!apiKey || !endpoint || !deploymentId) {
   console.error("❌ Missing one or more required environment variables:");
   console.log({
@@ -26,19 +29,14 @@ if (!apiKey || !endpoint || !deploymentId) {
   process.exit(1);
 }
 
-// ✅ AI Route
+// ✅ AI route
 app.post("/api/genai", async (req, res) => {
-  const prompt = req.body.prompt;
-  if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required" });
-  }
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
 
   try {
     const url = `${endpoint}/openai/deployments/${deploymentId}/chat/completions?api-version=${apiVersion}`;
     console.log("📡 Calling Azure OpenAI:", url);
-    console.log("🔑 Key loaded:", !!apiKey);
-    console.log("⚙️ Deployment:", deploymentId);
-    console.log("🌍 Endpoint:", endpoint);
 
     const response = await axios.post(
       url,
@@ -47,7 +45,7 @@ app.post("/api/genai", async (req, res) => {
           {
             role: "system",
             content:
-              "You are a campus navigation assistant. Provide clear, step-by-step walking directions using left, right, and straight instructions.",
+              "You are a campus navigation assistant. Provide clear, step-by-step walking directions in simple English.",
           },
           { role: "user", content: prompt },
         ],
@@ -61,8 +59,7 @@ app.post("/api/genai", async (req, res) => {
       }
     );
 
-    const result =
-      response.data.choices?.[0]?.message?.content || "No response from AI.";
+    const result = response.data?.choices?.[0]?.message?.content || "No AI response.";
     console.log("✅ AI response received.");
     res.json({ result });
   } catch (error) {
@@ -74,8 +71,7 @@ app.post("/api/genai", async (req, res) => {
   }
 });
 
-
-// ✅ Start server
+// ✅ Start the server
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🚀 Backend running on port ${port}`));
 
