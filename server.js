@@ -17,16 +17,16 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // =====================================
-// 1️⃣ Serve the frontend (public folder)
+// 1️⃣ Serve the frontend
 // =====================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve static frontend files (index.html, app.js, styles.css)
-app.use(express.static(path.join(__dirname, "public")));
+// If your frontend files (index.html, app.js) are in project root:
+app.use(express.static(__dirname));
 
 // =====================================
-// 2️⃣ AI Endpoint (for app.js fetch call)
+// 2️⃣ AI Endpoint
 // =====================================
 app.post("/api/genai", async (req, res) => {
   try {
@@ -35,10 +35,8 @@ app.post("/api/genai", async (req, res) => {
       return res.status(400).json({ error: "Prompt is required" });
     }
 
-    // 🔹 Replace with your Azure OpenAI endpoint
-    const endpoint = `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2024-02-01`;
+    const endpoint = `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_ID}/chat/completions?api-version=${process.env.AZURE_OPENAI_API_VERSION}`;
 
-    // 🔹 Send request to Azure OpenAI
     const response = await axios.post(
       endpoint,
       {
@@ -48,19 +46,17 @@ app.post("/api/genai", async (req, res) => {
       {
         headers: {
           "Content-Type": "application/json",
-          "api-key": process.env.AZURE_OPENAI_KEY,
+          "api-key": process.env.AZURE_OPENAI_API_KEY,
         },
       }
     );
 
-    // 🔹 Return AI result to frontend
-    const message = response.data.choices?.[0]?.message?.content || "No response from AI.";
+    const message =
+      response.data.choices?.[0]?.message?.content || "No response from AI.";
     res.json({ result: message });
   } catch (error) {
     console.error("AI API error:", error.message);
-    if (error.response) {
-      console.error("Response data:", error.response.data);
-    }
+    if (error.response) console.error("Response data:", error.response.data);
     res.status(500).json({ error: "AI service error" });
   }
 });
