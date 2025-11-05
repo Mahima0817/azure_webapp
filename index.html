@@ -14,67 +14,20 @@
   />
 
   <style>
-    body {
-      margin: 0;
-      font-family: "Poppins", sans-serif;
-    }
-
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-
+    body { margin: 0; font-family: "Poppins", sans-serif; }
+    #map { height: 100vh; width: 100%; }
     #controls {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 15px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      width: 260px;
+      position: absolute; top: 20px; left: 20px; z-index: 1000;
+      background: rgba(255,255,255,0.95); padding: 15px; border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 280px;
     }
-
-    #controls label {
-      display: block;
-      margin-top: 10px;
-      font-weight: 600;
-    }
-
-    #controls select,
-    #controls button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-
-    #findRoute {
-      background-color: #4caf50;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    #findRoute:hover {
-      background-color: #43a047;
-    }
-
+    #controls label { display:block; margin-top:10px; font-weight:600; }
+    #controls select, #controls button { width:100%; padding:8px; margin-top:5px; border-radius:8px; }
+    #findRoute { background:#4caf50; color:white; font-weight:700; cursor:pointer; }
     #routeExplanation {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 15px;
-      border-radius: 12px;
-      width: 320px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      max-height: 250px;
-      overflow-y: auto;
+      position:absolute; bottom:20px; left:20px; z-index:1000; background:rgba(255,255,255,0.95);
+      padding:15px; border-radius:12px; width:360px; box-shadow:0 4px 10px rgba(0,0,0,0.3);
+      max-height:260px; overflow-y:auto;
     }
   </style>
 </head>
@@ -86,14 +39,10 @@
     <h3>Campus Navigator</h3>
 
     <label for="start">Start Location:</label>
-    <select id="start">
-      <option value="">Select a start location</option>
-    </select>
+    <select id="start"><option value="">Select a start location</option></select>
 
     <label for="end">End Location:</label>
-    <select id="end">
-      <option value="">Select an end location</option>
-    </select>
+    <select id="end"><option value="">Select an end location</option></select>
 
     <label for="algorithm">Algorithm:</label>
     <select id="algorithm">
@@ -103,7 +52,7 @@
       <option value="dijkstra">Dijkstra</option>
     </select>
 
-    <label>
+    <label style="margin-top:8px;">
       <input type="checkbox" id="accessibility" />
       Accessible Route
     </label>
@@ -113,41 +62,24 @@
 
   <div id="routeExplanation">Route explanation will appear here.</div>
 
-  <!-- Scripts -->
+  <!-- Leaflet JS (must load first) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Initialize the map FIRST -->
+  <!-- Initialize the map -->
   <script>
-    var map = L.map("map").setView([13.0827, 80.2707], 17);
-    L.tileLayer(
-      "https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=YmEOZSxLEE87oOVe10Ps",
-      {
-        maxZoom: 22,
-        attribution:
-          '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }
-    ).addTo(map);
+    if (typeof L === "undefined") {
+      console.error("Leaflet did not load. Check internet connection or script order.");
+    } else {
+      // create map global variable for app.js to use
+      window.map = L.map("map").setView([13.0827, 80.2707], 17);
+      L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        { maxZoom: 22, attribution: '&copy; OpenStreetMap contributors' }
+      ).addTo(window.map);
+    }
   </script>
 
-  <script>
-    // Load campus_nodes_edges.json and log it (for debugging)
-    fetch('/campus_nodes_edges.json')
-      .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-      })
-      .then(data => {
-        console.log('Campus Data Loaded:', data);
-        // Initialize or update your graph, dropdowns or map here with 'data'
-      })
-      .catch(error => {
-        console.error('Error loading campus data:', error);
-      });
-  </script>
-
-  <!-- Then load other logic files -->
-  <script src="graph.js"></script>
-  <script src="algorithms.js"></script>
+  <!-- App logic -->
   <script src="app.js"></script>
 </body>
 </html>
