@@ -22,7 +22,7 @@ let routeLine = null;
 // =============================
 async function loadCampusData() {
   try {
-    const response = await fetch("/campus_nodes_edges.json");
+    const response = await fetch("campus_nodes_edges.json");
     if (!response.ok) throw new Error("Campus data not found");
 
     campusData = await response.json();
@@ -140,6 +140,7 @@ async function getGenAIResponse(prompt) {
 // 7️⃣ Load data when page loads
 // =============================
 document.addEventListener("DOMContentLoaded", loadCampusData);
+
 
 
 
