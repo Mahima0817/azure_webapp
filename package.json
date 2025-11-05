@@ -1,12 +1,9 @@
 {
-  "name": "campus-navigator-backend",
+  "name": "campus-navigation-ai",
   "version": "1.0.0",
-  "description": "Campus Navigator AI backend using Express and Azure OpenAI",
+  "description": "Campus navigation project with AI integration",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
+  "type": "module",
   "dependencies": {
     "axios": "^1.13.1",
     "body-parser": "^2.2.0",
@@ -14,10 +11,10 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0"
   },
+  "scripts": {
+    "start": "node server.js"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
-}
-"scripts": {
-  "start": "node server.js"
 }
