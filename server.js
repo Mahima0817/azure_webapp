@@ -1,52 +1,48 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const axios = require("axios");
-require("dotenv").config();
+// ✅ server.js (Final ES Module version for Azure)
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Load environment variables
+console.log("🔍 Environment variables loaded:");
+console.log({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+  deployment: process.env.AZURE_OPENAI_DEPLOYMENT_ID,
+  apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+  hasKey: !!process.env.AZURE_OPENAI_API_KEY,
+});
+
+const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "");
+const deployment = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
-const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "") + "/";
-const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
-const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
+const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2025-01-01-preview";
 
-// ✅ Quick check for missing environment variables
-if (!apiKey || !endpoint || !deploymentId || !apiVersion) {
-  console.error("❌ Missing one or more required environment variables.");
-  console.log({
-    AZURE_OPENAI_API_KEY: apiKey ? "Loaded" : "Missing",
-    AZURE_OPENAI_ENDPOINT: endpoint || "Missing",
-    AZURE_OPENAI_DEPLOYMENT_ID: deploymentId || "Missing",
-    AZURE_OPENAI_API_VERSION: apiVersion || "Missing",
-  });
-  process.exit(1);
-}
+// Health check
+app.get("/", (req, res) => {
+  res.send("✅ Azure AI Backend is running fine!");
+});
 
-// ✅ Route: Generate AI directions
+// AI endpoint
 app.post("/api/genai", async (req, res) => {
-  const prompt = req.body.prompt;
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
 
-  if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required" });
-  }
+  const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+  console.log("📡 Calling:", url);
 
   try {
-    const url = `${endpoint}openai/deployments/${deploymentId}/chat/completions?api-version=${apiVersion}`;
-    console.log("📡 Calling Azure OpenAI:", url);
-
     const response = await axios.post(
       url,
       {
         messages: [
-          {
-            role: "system",
-            content:
-              "You are a campus navigation assistant. Provide clear, step-by-step walking directions using left, right, and straight instructions.",
-          },
+          { role: "system", content: "You are a helpful campus navigation assistant." },
           { role: "user", content: prompt },
         ],
         max_tokens: 150,
@@ -59,18 +55,18 @@ app.post("/api/genai", async (req, res) => {
       }
     );
 
-    const result = response.data.choices?.[0]?.message?.content || "No response from AI.";
-    console.log("✅ AI response received.");
+    const result = response.data?.choices?.[0]?.message?.content || "No AI response";
+    console.log("✅ AI response:", result);
     res.json({ result });
   } catch (error) {
-    const msg = error.response?.data?.error?.message || error.message || String(error);
-    console.error("❌ Azure OpenAI error:", msg);
-    res.status(500).json({ error: "Failed to get AI response", details: msg });
+    console.error("❌ Azure OpenAI Error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      error: error.message,
+      details: error.response?.data || {},
+    });
   }
 });
 
-// ✅ Start server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`🚀 Backend running on port ${port}`);
-});
+app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+
