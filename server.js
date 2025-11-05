@@ -28,36 +28,6 @@ app.use(express.static(__dirname));
 // =====================================
 // 2️⃣ AI Endpoint
 // =====================================
-app.post("/api/genai", async (req, res) => {
-  try {
-    console.log("🧠 Received AI request with prompt:", req.body.prompt);
-    console.log("🔧 Azure vars check:", {
-      endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT_ID,
-      version: process.env.AZURE_OPENAI_API_VERSION,
-      keyExists: !!process.env.AZURE_OPENAI_API_KEY,
-    });
-
-    const { prompt } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
-    }
-
-    const endpoint = `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_ID}/chat/completions?api-version=${process.env.AZURE_OPENAI_API_VERSION}`;
-
-    const response = await axios.post(
-      endpoint,
-      {
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 150,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": process.env.AZURE_OPENAI_API_KEY,
-        },
-      }
-    );
 
     const message =
       response.data.choices?.[0]?.message?.content || "No response from AI.";
@@ -92,6 +62,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Campus Navigator backend running on port ${PORT}`);
 });
+
 
 
 
