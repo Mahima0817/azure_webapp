@@ -10,7 +10,6 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Load environment variables
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "");
 const deployment = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
@@ -24,19 +23,15 @@ console.log("Environment variables loaded:", {
   hasKey: !!apiKey,
 });
 
-// ✅ Test route
-app.get("/", (req, res) => {
-  res.send("✅ Azure AI backend running fine!");
-});
+app.get("/", (req, res) => res.send("✅ Azure AI backend running fine!"));
 
-// ✅ AI route
 app.post("/api/genai", async (req, res) => {
   try {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
     const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-    console.log("🔹 Calling Azure OpenAI:", url);
+    console.log("Calling Azure OpenAI:", url);
 
     const response = await axios.post(
       url,
@@ -47,18 +42,13 @@ app.post("/api/genai", async (req, res) => {
         ],
         max_tokens: 150,
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": apiKey,
-        },
-      }
+      { headers: { "Content-Type": "application/json", "api-key": apiKey } }
     );
 
     const message = response.data?.choices?.[0]?.message?.content || "No response";
     res.json({ result: message });
   } catch (error) {
-    console.error("❌ Azure OpenAI Error:", error.response?.data || error.message);
+    console.error("Azure OpenAI Error:", error.response?.data || error.message);
     res.status(error.response?.status || 500).json({
       error: error.message,
       details: error.response?.data,
@@ -67,5 +57,4 @@ app.post("/api/genai", async (req, res) => {
 });
 
 app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
-
 
