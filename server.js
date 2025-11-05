@@ -28,8 +28,7 @@ if (!apiKey || !endpoint || !deploymentId) {
 
 // ✅ AI Route
 app.post("/api/genai", async (req, res) => {
-  const { prompt } = req.body;
-
+  const prompt = req.body.prompt;
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required" });
   }
@@ -37,6 +36,9 @@ app.post("/api/genai", async (req, res) => {
   try {
     const url = `${endpoint}/openai/deployments/${deploymentId}/chat/completions?api-version=${apiVersion}`;
     console.log("📡 Calling Azure OpenAI:", url);
+    console.log("🔑 Key loaded:", !!apiKey);
+    console.log("⚙️ Deployment:", deploymentId);
+    console.log("🌍 Endpoint:", endpoint);
 
     const response = await axios.post(
       url,
@@ -45,7 +47,7 @@ app.post("/api/genai", async (req, res) => {
           {
             role: "system",
             content:
-              "You are a helpful campus navigation assistant. Explain walking routes clearly in a friendly tone.",
+              "You are a campus navigation assistant. Provide clear, step-by-step walking directions using left, right, and straight instructions.",
           },
           { role: "user", content: prompt },
         ],
@@ -59,7 +61,9 @@ app.post("/api/genai", async (req, res) => {
       }
     );
 
-    const result = response.data?.choices?.[0]?.message?.content || "No AI response.";
+    const result =
+      response.data.choices?.[0]?.message?.content || "No response from AI.";
+    console.log("✅ AI response received.");
     res.json({ result });
   } catch (error) {
     console.error("❌ Azure OpenAI error:", error.response?.data || error.message);
@@ -70,7 +74,9 @@ app.post("/api/genai", async (req, res) => {
   }
 });
 
+
 // ✅ Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🚀 Backend running on port ${port}`));
+
 
