@@ -1,105 +1,77 @@
 // ===============================
-// 🌐 Campus Navigator Backend
+// Campus Navigator - Backend API
 // ===============================
-const express = require("express");
-const path = require("path");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const axios = require("axios");
-require("dotenv").config();
+
+import express from "express";
+import bodyParser from "body-parser";
+import cors from "cors";
+import axios from "axios";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// ===================================================
-// 🗂️ Serve static frontend files (index.html, app.js…)
-// ===================================================
-const staticPath = path.join(__dirname);
-app.use(express.static(staticPath));
+// =====================================
+// 1️⃣ Serve the frontend (public folder)
+// =====================================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Default route → serve index.html for SPA
-app.get("/", (req, res) => {
-  res.sendFile(path.join(staticPath, "index.html"));
-});
+// Serve static frontend files (index.html, app.js, styles.css)
+app.use(express.static(path.join(__dirname, "public")));
 
-// ===================================================
-// 🤖 Azure OpenAI Configuration
-// ===================================================
-const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || "";
-const AZURE_OPENAI_ENDPOINT = (process.env.AZURE_OPENAI_ENDPOINT || "").replace(/\/+$/, "");
-const AZURE_OPENAI_DEPLOYMENT_ID = process.env.AZURE_OPENAI_DEPLOYMENT_ID || "";
-const AZURE_OPENAI_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || "2024-02-01";
-
-const aiEnabled =
-  AZURE_OPENAI_API_KEY &&
-  AZURE_OPENAI_ENDPOINT &&
-  AZURE_OPENAI_DEPLOYMENT_ID &&
-  AZURE_OPENAI_API_VERSION;
-
-if (!aiEnabled) {
-  console.warn("⚠️ Azure OpenAI not fully configured. /api/genai will return 503 until configured.");
-} else {
-  console.log("✅ Azure OpenAI configuration detected.");
-}
-
-// ===================================================
-// 🧠 POST /api/genai → Get AI explanation
-// ===================================================
+// =====================================
+// 2️⃣ AI Endpoint (for app.js fetch call)
+// =====================================
 app.post("/api/genai", async (req, res) => {
-  if (!aiEnabled) {
-    return res.status(503).json({ error: "Azure OpenAI not configured on server." });
-  }
-
-  const prompt = req.body?.prompt;
-  if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required" });
-  }
-
   try {
-    const url = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT_ID}/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`;
-    console.log("📡 Calling Azure OpenAI:", url);
+    const { prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required" });
+    }
 
+    // 🔹 Replace with your Azure OpenAI endpoint
+    const endpoint = `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2024-02-01`;
+
+    // 🔹 Send request to Azure OpenAI
     const response = await axios.post(
-      url,
+      endpoint,
       {
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a campus navigation assistant. Provide short, clear, human-friendly step-by-step walking directions using left, right, and straight instructions. Avoid using internal node ids.",
-          },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 200,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 150,
       },
       {
         headers: {
           "Content-Type": "application/json",
-          "api-key": AZURE_OPENAI_API_KEY,
+          "api-key": process.env.AZURE_OPENAI_KEY,
         },
-        timeout: 20000,
       }
     );
 
-    const result = response.data?.choices?.[0]?.message?.content || "No response from AI.";
-    res.json({ result });
-  } catch (err) {
-    console.error("❌ Azure OpenAI request failed:", err?.response?.data || err.message || err);
-    const msg = err?.response?.data?.error?.message || err.message || "Unknown";
-    res.status(500).json({ error: "Failed to get AI response", details: msg });
+    // 🔹 Return AI result to frontend
+    const message = response.data.choices?.[0]?.message?.content || "No response from AI.";
+    res.json({ result: message });
+  } catch (error) {
+    console.error("AI API error:", error.message);
+    if (error.response) {
+      console.error("Response data:", error.response.data);
+    }
+    res.status(500).json({ error: "AI service error" });
   }
 });
 
-// ===================================================
-// 🚀 Start the server
-// ===================================================
+// =====================================
+// 3️⃣ Start the server
+// =====================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Campus Navigator backend running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`✅ Campus Navigator backend running on port ${PORT}`);
 });
-
-
 
 
 
