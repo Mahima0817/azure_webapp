@@ -1,4 +1,4 @@
-// ✅ server.js (Final ES Module version for Azure)
+// ✅ server.js (works with Azure + "type": "module")
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -11,33 +11,34 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-console.log("🔍 Environment variables loaded:");
-console.log({
-  endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-  deployment: process.env.AZURE_OPENAI_DEPLOYMENT_ID,
-  apiVersion: process.env.AZURE_OPENAI_API_VERSION,
-  hasKey: !!process.env.AZURE_OPENAI_API_KEY,
-});
-
+// ✅ Read env vars
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, "");
 const deployment = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
 const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2025-01-01-preview";
+const port = process.env.PORT || 3000;
 
-// Health check
-app.get("/", (req, res) => {
-  res.send("✅ Azure AI Backend is running fine!");
+console.log("Environment variables loaded:", {
+  endpoint,
+  deployment,
+  apiVersion,
+  hasKey: !!apiKey,
 });
 
-// AI endpoint
+// ✅ Health check route
+app.get("/", (req, res) => {
+  res.send("✅ Azure AI backend running fine!");
+});
+
+// ✅ AI endpoint route
 app.post("/api/genai", async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
-
-  const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-  console.log("📡 Calling:", url);
-
   try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Prompt required" });
+
+    const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+    console.log("Calling Azure OpenAI:", url);
+
     const response = await axios.post(
       url,
       {
@@ -55,18 +56,16 @@ app.post("/api/genai", async (req, res) => {
       }
     );
 
-    const result = response.data?.choices?.[0]?.message?.content || "No AI response";
-    console.log("✅ AI response:", result);
-    res.json({ result });
+    const message = response.data?.choices?.[0]?.message?.content || "No response";
+    res.json({ result: message });
   } catch (error) {
-    console.error("❌ Azure OpenAI Error:", error.response?.data || error.message);
+    console.error("Azure OpenAI Error:", error.response?.data || error.message);
     res.status(error.response?.status || 500).json({
       error: error.message,
-      details: error.response?.data || {},
+      details: error.response?.data,
     });
   }
 });
 
-const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
 
