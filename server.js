@@ -1,3 +1,6 @@
+// ===============================
+// 🌐 Campus Navigator Backend
+// ===============================
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
@@ -9,15 +12,20 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Serve static frontend files from the current directory (site/wwwroot)
-app.use(express.static(path.join(__dirname)));
+// ===================================================
+// 🗂️ Serve static frontend files (index.html, app.js…)
+// ===================================================
+const staticPath = path.join(__dirname);
+app.use(express.static(staticPath));
 
-// Root route fallback
+// Default route → serve index.html for SPA
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(path.join(staticPath, "index.html"));
 });
 
-// GenAI config
+// ===================================================
+// 🤖 Azure OpenAI Configuration
+// ===================================================
 const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || "";
 const AZURE_OPENAI_ENDPOINT = (process.env.AZURE_OPENAI_ENDPOINT || "").replace(/\/+$/, "");
 const AZURE_OPENAI_DEPLOYMENT_ID = process.env.AZURE_OPENAI_DEPLOYMENT_ID || "";
@@ -35,7 +43,9 @@ if (!aiEnabled) {
   console.log("✅ Azure OpenAI configuration detected.");
 }
 
-// POST /api/genai
+// ===================================================
+// 🧠 POST /api/genai → Get AI explanation
+// ===================================================
 app.post("/api/genai", async (req, res) => {
   if (!aiEnabled) {
     return res.status(503).json({ error: "Azure OpenAI not configured on server." });
@@ -81,11 +91,15 @@ app.post("/api/genai", async (req, res) => {
   }
 });
 
-// Start server
+// ===================================================
+// 🚀 Start the server
+// ===================================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Campus Navigator backend running on port ${PORT}`);
 });
+
+
 
 
 
