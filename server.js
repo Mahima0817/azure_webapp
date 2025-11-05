@@ -1,4 +1,3 @@
-// server.js - Express backend that serves static files and handles /api/genai
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
@@ -10,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Serve static frontend files from current directory (wwwroot)
+// Serve static frontend files from the current directory (site/wwwroot)
 app.use(express.static(path.join(__dirname)));
 
 // Root route fallback
@@ -18,7 +17,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Load and validate env vars but DO NOT exit; instead disable AI if missing.
+// GenAI config
 const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || "";
 const AZURE_OPENAI_ENDPOINT = (process.env.AZURE_OPENAI_ENDPOINT || "").replace(/\/+$/, "");
 const AZURE_OPENAI_DEPLOYMENT_ID = process.env.AZURE_OPENAI_DEPLOYMENT_ID || "";
@@ -87,5 +86,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
