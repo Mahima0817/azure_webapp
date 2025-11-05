@@ -352,19 +352,29 @@ document.getElementById("findRoute").addEventListener("click", async () => {
   `;
 });
 
-// call backend /api/genai
+// 🔹 Define your backend base URL
+const API_BASE =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3000" // Local testing
+    : "https://azurewebapp-ata8ehd9d8c8hjgv.southindia-01.azurewebsites.net"; // 👈 Your Azure backend URL
+
+// ===============================
+// Fetch AI response from backend
+// ===============================
 async function fetchAI(prompt) {
   try {
-    const res = await fetch("/api/genai", {
+    const res = await fetch(`${API_BASE}/api/genai`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt }),
     });
+
     if (!res.ok) {
-      const err = await res.json().catch(()=>({}));
+      const err = await res.json().catch(() => ({}));
       console.warn("AI call returned non-ok:", res.status, err);
       return "AI explanation unavailable (server returned error).";
     }
+
     const data = await res.json();
     return data.result || "No AI explanation received.";
   } catch (e) {
