@@ -31,11 +31,10 @@ app.use(express.static(__dirname));
 app.post("/api/genai", async (req, res) => {
   try {
     const { prompt } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
-    }
+    console.log("📥 Prompt received:", prompt);
 
     const endpoint = `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_ID}/chat/completions?api-version=${process.env.AZURE_OPENAI_API_VERSION}`;
+    console.log("🔗 Endpoint called:", endpoint);
 
     const response = await axios.post(
       endpoint,
@@ -50,6 +49,18 @@ app.post("/api/genai", async (req, res) => {
         },
       }
     );
+
+    console.log("✅ Azure Response:", response.data);
+    const message =
+      response.data.choices?.[0]?.message?.content || "No response from AI.";
+    res.json({ result: message });
+  } catch (error) {
+    console.error("🔥 AI API error:", error.message);
+    if (error.response) console.error("Response data:", error.response.data);
+    res.status(500).json({ error: "AI service error" });
+  }
+});
+
 
     const message =
       response.data.choices?.[0]?.message?.content || "No response from AI.";
@@ -68,6 +79,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Campus Navigator backend running on port ${PORT}`);
 });
+
 
 
 
