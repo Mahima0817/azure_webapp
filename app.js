@@ -1,4 +1,4 @@
-// app.js – Final version: Natural, landmark-based AI navigation system
+// app.js – Final version: Natural & Realistic AI Campus Navigation (no hallucinations)
 
 if (typeof window === "undefined" || typeof window.map === "undefined") {
   console.error("Map not found. Ensure index.html created window.map before app.js loads.");
@@ -105,7 +105,7 @@ function pathDistance(nodeIds) {
     const e = edges.find((x) => x.to === nodeIds[i + 1]);
     if (e) total += Number(e.weight || 1);
   }
-  return total * 150; // 1 weight = 150 meters
+  return total * 150; // 1 unit = 150 meters (scaled for realism)
 }
 
 // ========== Algorithms ==========
@@ -195,21 +195,26 @@ document.getElementById("findRoute").addEventListener("click", async () => {
 
   const routeSummary = `${filtered[0]} → ${filtered.slice(1, -1).join(" → ")} → ${filtered[filtered.length - 1]}`;
 
-  // ✨ AI Prompt - landmark-based only
+  // ✨ AI Prompt – REAL LOCATION-BASED ONLY (No hallucination)
   const prompt = `
-You are a **smart campus navigation assistant** for Rajalakshmi Engineering College.
+You are an intelligent **Campus Navigation Assistant** for Rajalakshmi Engineering College.
 
-Your goal is to give natural walking directions between campus landmarks.
+You are provided with an exact walking path derived from campus map data.
+Each location below is a real node in the correct walking order.
 
-🧭 Guidelines:
-- Focus only on major named locations (ignore numeric buildings like 26, 27, etc.).
-- Use natural navigation phrases like “walk straight”, “turn left”, “head past”.
-- Mention any landmarks or notable spots on the way.
-- Avoid robotic step-by-step sentences like “Walk from X to Y”.
-- Write 4–6 friendly sentences describing the route.
-- End with total distance (~${bestDist.toFixed(0)} meters) and approximate walking time.
+Your task:
+- Describe the walking directions naturally **using only these actual locations**.
+- Do NOT invent or mention any buildings, blocks, or landmarks not listed.
+- You may group nearby nodes together (e.g., "continue straight through Blocks 26–28").
+- Write 3–6 natural, human-sounding sentences.
+- Use terms like "walk straight", "turn left", or "head past".
+- End with the total distance and approximate walking time (at ~1.4 m/s walking speed).
+- Keep the tone friendly and realistic.
 
-Route Summary: ${routeSummary}
+Real route data (do not add new places):
+${filtered.join(" → ")}
+
+Total path distance: ~${bestDist.toFixed(0)} meters.
 `;
 
   const aiText = await fetchAI(prompt);
