@@ -108,7 +108,6 @@ function countEdges(g) {
 
 // ===== Algorithms =====
 
-// BFS - returns path of node IDs or [] if none
 function bfs(graphObj, startId, endId, accessibleOnly = false) {
   if (startId === endId) return [startId];
 
@@ -126,7 +125,6 @@ function bfs(graphObj, startId, endId, accessibleOnly = false) {
         visited.add(v);
         parent.set(v, u);
         if (v === endId) {
-          // reconstruct path
           const path = [];
           let cur = v;
           while (cur !== undefined) {
@@ -142,7 +140,6 @@ function bfs(graphObj, startId, endId, accessibleOnly = false) {
   return [];
 }
 
-// DFS - iterative stack, returns first found path (may not be shortest)
 function dfs(graphObj, startId, endId, accessibleOnly = false) {
   const stack = [startId];
   const parent = new Map();
@@ -173,7 +170,6 @@ function dfs(graphObj, startId, endId, accessibleOnly = false) {
   return [];
 }
 
-// Dijkstra - weight used; returns shortest path (respecting accessibility flag)
 function dijkstra(graphObj, startId, endId, accessibleOnly = false) {
   const dist = new Map();
   const prev = new Map();
@@ -205,7 +201,6 @@ function dijkstra(graphObj, startId, endId, accessibleOnly = false) {
 
   if (!prev.has(endId) && startId !== endId && dist.get(endId) === Infinity) return [];
 
-  // reconstruct
   const path = [];
   let cur = endId;
   while (cur !== undefined) {
@@ -215,7 +210,7 @@ function dijkstra(graphObj, startId, endId, accessibleOnly = false) {
   return path.reverse();
 }
 
-// Simple binary heap (min) for Dijkstra
+// MinHeap for Dijkstra
 class MinHeap {
   constructor() { this.items = []; }
   push(x) {
@@ -291,7 +286,6 @@ document.getElementById("findRoute").addEventListener("click", async () => {
   if (!nodesByName[startName] || !nodesByName[endName]) { alert("Selected locations not found."); return; }
   if (startName === endName) { alert("Start and end are the same."); return; }
 
-  // Try all node combinations (multiple nodes can share same place name)
   const startIds = nodesByName[startName].map(n => n.id);
   const endIds = nodesByName[endName].map(n => n.id);
 
@@ -304,8 +298,6 @@ document.getElementById("findRoute").addEventListener("click", async () => {
       if (algorithm === "bfs") path = bfs(graph, s, e, accessibleOnly);
       else if (algorithm === "dfs") path = dfs(graph, s, e, accessibleOnly);
       else if (algorithm === "dijkstra") path = dijkstra(graph, s, e, accessibleOnly);
-      else path = bfs(graph, s, e, accessibleOnly);
-
       if (path && path.length > 0) {
         const d = pathDistance(path);
         if (d < bestDist) { bestDist = d; bestPath = path; }
@@ -320,18 +312,36 @@ document.getElementById("findRoute").addEventListener("click", async () => {
 
   drawPath(bestPath);
 
-  // Convert to readable locations (collapse repeated names)
   const readable = bestPath.map(id => graph.nodes.get(id)?.name || id).filter(Boolean);
   const filtered = readable.filter((v,i) => i===0 || v !== readable[i-1]);
 
-  // Build human steps (simple: pairwise)
   const steps = filtered.map((loc, idx) => {
     if (idx === filtered.length - 1) return null;
     return `Walk from <strong>${loc}</strong> to <strong>${filtered[idx+1]}</strong>.`;
   }).filter(Boolean);
 
-  // Ask AI (if enabled) for nicer directions
-  const prompt = `Produce short human walking directions for: ${filtered.join(" → ")}. Total distance: ${bestDist.toFixed(2)} meters.`;
+  // ✅ Smarter AI prompt with coordinates + distances
+  let detailedPath = "";
+  for (let i = 0; i < bestPath.length - 1; i++) {
+    const n1 = graph.nodes.get(bestPath[i]);
+    const n2 = graph.nodes.get(bestPath[i + 1]);
+    const edge = (graph.adjacencyList.get(n1.id) || []).find(e => e.to === n2.id);
+    const dist = edge ? Number(edge.weight || 0) : 0;
+    detailedPath += `${i + 1}) From "${n1.name}" at (${n1.lat.toFixed(6)}, ${n1.lng.toFixed(6)}) `
+      + `to "${n2.name}" at (${n2.lat.toFixed(6)}, ${n2.lng.toFixed(6)}), distance ≈ ${dist.toFixed(1)} meters.\n`;
+  }
+
+  const prompt = `
+You are a campus navigation assistant. 
+Using the following route data, generate human-friendly step-by-step walking directions. 
+Mention approximate distances and directions like "turn left", "go straight", etc. 
+End with a total distance summary.
+
+Route details:
+${detailedPath}
+
+Total route distance: ${bestDist.toFixed(2)} meters.
+`;
 
   const aiText = await fetchAI(prompt);
 
@@ -352,17 +362,13 @@ document.getElementById("findRoute").addEventListener("click", async () => {
   `;
 });
 
-// 🔹 Define your backend base URL
+// Backend base URL
 const API_BASE =
   window.location.hostname === "localhost"
-    ? "http://localhost:3000" // Local testing
-    : "https://azurewebapp-ata8ehd9d8c8hjgv.southindia-01.azurewebsites.net"; // 👈 Your Azure backend URL
+    ? "http://localhost:3000"
+    : "https://azurewebapp-ata8ehd9d8c8hjgv.southindia-01.azurewebsites.net";
 
-// ===============================
 // Fetch AI response from backend
-// ===============================
-// 🔹 Define your backend base URL
-
 async function fetchAI(prompt) {
   try {
     const res = await fetch(`${API_BASE}/api/genai`, {
