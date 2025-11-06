@@ -1,4 +1,4 @@
-// app.js – Location-based campus navigation with AI guidance
+// app.js – Final version: Natural, landmark-based AI navigation system
 
 if (typeof window === "undefined" || typeof window.map === "undefined") {
   console.error("Map not found. Ensure index.html created window.map before app.js loads.");
@@ -7,11 +7,7 @@ if (typeof window === "undefined" || typeof window.map === "undefined") {
 const map = window.map;
 const GRAPH_JSON = "/campus_nodes_edges.json";
 
-let graph = {
-  nodes: new Map(),
-  adjacencyList: new Map(),
-};
-
+let graph = { nodes: new Map(), adjacencyList: new Map() };
 let nodesByName = {};
 let currentPathLayer = null;
 
@@ -22,7 +18,6 @@ function addNodeToGraph(node) {
     graph.adjacencyList.set(node.id, []);
   }
 }
-
 function addEdgeToGraph(edge) {
   if (!graph.adjacencyList.has(edge.from)) return;
   graph.adjacencyList.get(edge.from).push({
@@ -59,7 +54,7 @@ fetch(GRAPH_JSON)
       L.marker([loc.lat, loc.lng]).addTo(map).bindPopup(`<b>${loc.name}</b>`)
     );
 
-    // Draw static campus edges
+    // Draw campus connections
     for (const [fromId, edges] of graph.adjacencyList.entries()) {
       const fromNode = graph.nodes.get(fromId);
       if (!fromNode) continue;
@@ -93,7 +88,7 @@ fetch(GRAPH_JSON)
   .catch((err) => {
     console.error("Error loading campus graph:", err);
     const box = document.getElementById("routeExplanation");
-    if (box) box.innerText = "Error loading campus data. Check console for details.";
+    if (box) box.innerText = "Error loading campus data.";
   });
 
 // ========== Utilities ==========
@@ -103,7 +98,6 @@ function countEdges(g) {
   return c;
 }
 
-// Multiply weights to get realistic distances (1 unit = 150 meters)
 function pathDistance(nodeIds) {
   let total = 0;
   for (let i = 0; i < nodeIds.length - 1; i++) {
@@ -111,11 +105,11 @@ function pathDistance(nodeIds) {
     const e = edges.find((x) => x.to === nodeIds[i + 1]);
     if (e) total += Number(e.weight || 1);
   }
-  return total * 150; // scale to 150m per edge
+  return total * 150; // 1 weight = 150 meters
 }
 
-// ========== Pathfinding Algorithms ==========
-function bfs(graphObj, startId, endId, accessibleOnly = false) {
+// ========== Algorithms ==========
+function bfs(graphObj, startId, endId) {
   if (startId === endId) return [startId];
   const q = [startId];
   const visited = new Set([startId]);
@@ -125,7 +119,6 @@ function bfs(graphObj, startId, endId, accessibleOnly = false) {
     const u = q.shift();
     const neighbors = graphObj.adjacencyList.get(u) || [];
     for (const edge of neighbors) {
-      if (accessibleOnly && !edge.accessible) continue;
       const v = edge.to;
       if (!visited.has(v)) {
         visited.add(v);
@@ -146,86 +139,6 @@ function bfs(graphObj, startId, endId, accessibleOnly = false) {
   return [];
 }
 
-function dijkstra(graphObj, startId, endId, accessibleOnly = false) {
-  const dist = new Map();
-  const prev = new Map();
-  const pq = new MinHeap();
-
-  for (const k of graphObj.nodes.keys()) dist.set(k, Infinity);
-  dist.set(startId, 0);
-  pq.push({ id: startId, d: 0 });
-
-  while (!pq.isEmpty()) {
-    const { id: u, d } = pq.pop();
-    if (d > dist.get(u)) continue;
-    if (u === endId) break;
-
-    const neighbors = graphObj.adjacencyList.get(u) || [];
-    for (const edge of neighbors) {
-      if (accessibleOnly && !edge.accessible) continue;
-      const v = edge.to;
-      const alt = dist.get(u) + (Number(edge.weight) || 1);
-      if (alt < dist.get(v)) {
-        dist.set(v, alt);
-        prev.set(v, u);
-        pq.push({ id: v, d: alt });
-      }
-    }
-  }
-
-  const path = [];
-  let cur = endId;
-  while (cur !== undefined) {
-    path.push(cur);
-    cur = prev.get(cur);
-  }
-  return path.reverse();
-}
-
-class MinHeap {
-  constructor() {
-    this.items = [];
-  }
-  push(x) {
-    this.items.push(x);
-    this.bubbleUp(this.items.length - 1);
-  }
-  pop() {
-    if (this.items.length === 0) return null;
-    const top = this.items[0];
-    const last = this.items.pop();
-    if (this.items.length) {
-      this.items[0] = last;
-      this.sinkDown(0);
-    }
-    return top;
-  }
-  bubbleUp(i) {
-    while (i > 0) {
-      const p = Math.floor((i - 1) / 2);
-      if (this.items[p].d <= this.items[i].d) break;
-      [this.items[p], this.items[i]] = [this.items[i], this.items[p]];
-      i = p;
-    }
-  }
-  sinkDown(i) {
-    const n = this.items.length;
-    while (true) {
-      let left = 2 * i + 1,
-        right = 2 * i + 2,
-        smallest = i;
-      if (left < n && this.items[left].d < this.items[smallest].d) smallest = left;
-      if (right < n && this.items[right].d < this.items[smallest].d) smallest = right;
-      if (smallest === i) break;
-      [this.items[smallest], this.items[i]] = [this.items[i], this.items[smallest]];
-      i = smallest;
-    }
-  }
-  isEmpty() {
-    return this.items.length === 0;
-  }
-}
-
 // ========== Draw Path ==========
 function drawPath(nodeIds) {
   if (currentPathLayer) map.removeLayer(currentPathLayer);
@@ -235,7 +148,6 @@ function drawPath(nodeIds) {
       return n ? [n.lat, n.lng] : null;
     })
     .filter(Boolean);
-
   currentPathLayer = L.polyline(latlngs, { color: "red", weight: 4 }).addTo(map);
   try {
     map.fitBounds(currentPathLayer.getBounds(), { padding: [40, 40] });
@@ -260,10 +172,7 @@ document.getElementById("findRoute").addEventListener("click", async () => {
 
   for (const s of startIds) {
     for (const e of endIds) {
-      let path = [];
-      if (algorithm === "bfs") path = bfs(graph, s, e);
-      else if (algorithm === "dijkstra") path = dijkstra(graph, s, e);
-
+      const path = bfs(graph, s, e);
       if (path && path.length > 0) {
         const d = pathDistance(path);
         if (d < bestDist) {
@@ -279,25 +188,28 @@ document.getElementById("findRoute").addEventListener("click", async () => {
   drawPath(bestPath);
 
   const readable = bestPath.map((id) => graph.nodes.get(id)?.name || id);
-  const filtered = readable.filter((v, i) => i === 0 || v !== readable[i - 1]);
+  let filtered = readable.filter((v, i) => i === 0 || v !== readable[i - 1]);
+
+  // 🚫 Remove purely numeric nodes like "26", "27"
+  filtered = filtered.filter((name) => isNaN(name));
 
   const routeSummary = `${filtered[0]} → ${filtered.slice(1, -1).join(" → ")} → ${filtered[filtered.length - 1]}`;
 
-  // 🧭 Natural AI Prompt
+  // ✨ AI Prompt - landmark-based only
   const prompt = `
-You are a **friendly and intelligent campus navigation assistant** for Rajalakshmi Engineering College.
+You are a **smart campus navigation assistant** for Rajalakshmi Engineering College.
 
-Your task is to write **location-based walking directions** between two places.
+Your goal is to give natural walking directions between campus landmarks.
 
-Guidelines:
-- Focus on the start and destination only.
-- Mention major blocks or landmarks along the way.
-- Combine small hops into smooth sentences.
-- Avoid "Walk from X to Y" lines — make it sound natural.
-- Add turns or relative directions (left, right, straight).
-- End with total distance (~${bestDist.toFixed(0)} meters) and estimated walking time (assume 1.4 m/s).
+🧭 Guidelines:
+- Focus only on major named locations (ignore numeric buildings like 26, 27, etc.).
+- Use natural navigation phrases like “walk straight”, “turn left”, “head past”.
+- Mention any landmarks or notable spots on the way.
+- Avoid robotic step-by-step sentences like “Walk from X to Y”.
+- Write 4–6 friendly sentences describing the route.
+- End with total distance (~${bestDist.toFixed(0)} meters) and approximate walking time.
 
-Route: ${routeSummary}
+Route Summary: ${routeSummary}
 `;
 
   const aiText = await fetchAI(prompt);
@@ -343,3 +255,4 @@ async function fetchAI(prompt) {
     return "Error fetching AI explanation.";
   }
 }
+
